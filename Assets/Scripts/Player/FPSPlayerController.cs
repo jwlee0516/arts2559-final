@@ -10,31 +10,39 @@ public class FPSPlayerController : MonoBehaviour
 
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 6f;
+    [SerializeField] private float sprintSpeed = 9f;
     [SerializeField] private float flySpeed = 8f;
     [SerializeField] private float jumpHeight = 1.2f;
     [SerializeField] private float gravity = -20f;
 
-    [Header("Mouse Look")]
-    [SerializeField] private float lookSensitivity = 0.1f;
-    [SerializeField] private float maxLookX = 85f;
+    [Header("Look")]
+    [SerializeField] private float lookSensitivity = 0.18f;
+    [SerializeField] private float lookSmoothTime = 0.03f;
+    [SerializeField] private bool useLookSmoothing = true;
+    [SerializeField] private float maxLookAngle = 85f;
 
-    private CharacterController controller;
+    private Vector2 currentLookDelta;
+    private Vector2 currentLookVelocity;
+    
+
+    private CharacterController characterController;
     private PlayerControl controls;
 
     private Vector2 moveInput;
     private Vector2 lookInput;
-    private bool jumpPressed;
+
+    private bool jumpQueued;
+    private bool sprintHeld;
     private bool flyUpHeld;
     private bool flyDownHeld;
+    private bool flyMode;
 
     private float verticalVelocity;
-    private float cameraPitch;
-
-    private bool flyMode = false;
+    private float pitch;
 
     private void Awake()
     {
-        controller = GetComponent<CharacterController>();
+        characterController = GetComponent<CharacterController>();
         controls = new PlayerControl();
     }
 
@@ -50,13 +58,13 @@ public class FPSPlayerController : MonoBehaviour
 
         controls.Player.Jump.performed += OnJump;
 
+        controls.Player.ToggleFly.performed += OnToggleFly;
+
         controls.Player.FlyUp.performed += OnFlyUpPerformed;
         controls.Player.FlyUp.canceled += OnFlyUpCanceled;
 
         controls.Player.FlyDown.performed += OnFlyDownPerformed;
         controls.Player.FlyDown.canceled += OnFlyDownCanceled;
-        
-        controls.Player.ToggleFly.performed += OnToggleFly;
     }
 
     private void OnDisable()
@@ -68,84 +76,122 @@ public class FPSPlayerController : MonoBehaviour
         controls.Player.Look.canceled -= OnLook;
 
         controls.Player.Jump.performed -= OnJump;
+        
+        controls.Player.ToggleFly.performed -= OnToggleFly;
 
         controls.Player.FlyUp.performed -= OnFlyUpPerformed;
         controls.Player.FlyUp.canceled -= OnFlyUpCanceled;
 
         controls.Player.FlyDown.performed -= OnFlyDownPerformed;
         controls.Player.FlyDown.canceled -= OnFlyDownCanceled;
-        
-        
 
         controls.Disable();
     }
 
     private void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        LockCursor();
     }
 
     private void Update()
     {
         HandleLook();
         HandleMovement();
+
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            UnlockCursor();
+        }
+
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            LockCursor();
+        }
     }
 
     private void HandleLook()
     {
-        float mouseX = lookInput.x * lookSensitivity;
-        float mouseY = lookInput.y * lookSensitivity;
+        Vector2 targetLookDelta = lookInput * lookSensitivity;
 
-        cameraPitch -= mouseY;
-        cameraPitch = Mathf.Clamp(cameraPitch, -maxLookX, maxLookX);
+        if (useLookSmoothing)
+        {
+            currentLookDelta = Vector2.SmoothDamp(
+                currentLookDelta,
+                targetLookDelta,
+                ref currentLookVelocity,
+                lookSmoothTime
+            );
+        }
+        else
+        {
+            currentLookDelta = targetLookDelta;
+        }
 
-        cameraPivot.localRotation = Quaternion.Euler(cameraPitch, 0f, 0f);
+        float mouseX = currentLookDelta.x;
+        float mouseY = currentLookDelta.y;
+
+        pitch -= mouseY;
+        pitch = Mathf.Clamp(pitch, -maxLookAngle, maxLookAngle);
+
+        cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
         transform.Rotate(Vector3.up * mouseX);
     }
 
     private void HandleMovement()
     {
-        Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
+        Vector3 horizontalMove =
+            transform.right * moveInput.x +
+            transform.forward * moveInput.y;
+
+        if (horizontalMove.sqrMagnitude > 1f)
+            horizontalMove.Normalize();
 
         if (flyMode)
         {
             float verticalFly = 0f;
+
             if (flyUpHeld) verticalFly += 1f;
             if (flyDownHeld) verticalFly -= 1f;
 
-            Vector3 flyMove = (move + Vector3.up * verticalFly) * flySpeed;
-            controller.Move(flyMove * Time.deltaTime);
+            float currentFlySpeed = sprintHeld ? sprintSpeed : flySpeed;
+
+            Vector3 flyMove = (horizontalMove + Vector3.up * verticalFly) * currentFlySpeed;
+            characterController.Move(flyMove * Time.deltaTime);
             return;
         }
 
-        if (controller.isGrounded && verticalVelocity < 0f)
+        if (characterController.isGrounded && verticalVelocity < 0f)
         {
             verticalVelocity = -2f;
         }
 
-        if (jumpPressed && controller.isGrounded)
+        if (jumpQueued && characterController.isGrounded)
         {
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        jumpPressed = false;
+        jumpQueued = false;
 
         verticalVelocity += gravity * Time.deltaTime;
 
-        Vector3 velocity = move * walkSpeed;
-        velocity.y = verticalVelocity;
+        float currentSpeed = sprintHeld ? sprintSpeed : walkSpeed;
 
-        controller.Move(velocity * Time.deltaTime);
+        Vector3 finalMove = horizontalMove * currentSpeed;
+        finalMove.y = verticalVelocity;
+
+        characterController.Move(finalMove * Time.deltaTime);
     }
 
-    public void ToggleFlyMode()
+    private void LockCursor()
     {
-        flyMode = !flyMode;
-        if (flyMode)
-        {
-            verticalVelocity = 0f;
-        }
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    private void UnlockCursor()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     private void OnMove(InputAction.CallbackContext context)
@@ -160,7 +206,17 @@ public class FPSPlayerController : MonoBehaviour
 
     private void OnJump(InputAction.CallbackContext context)
     {
-        jumpPressed = true;
+        jumpQueued = true;
+    }
+    
+    private void OnToggleFly(InputAction.CallbackContext context)
+    {
+        flyMode = !flyMode;
+
+        if (flyMode)
+        {
+            verticalVelocity = 0f;
+        }
     }
 
     private void OnFlyUpPerformed(InputAction.CallbackContext context)
@@ -181,10 +237,5 @@ public class FPSPlayerController : MonoBehaviour
     private void OnFlyDownCanceled(InputAction.CallbackContext context)
     {
         flyDownHeld = false;
-    }
-    
-    private void OnToggleFly(InputAction.CallbackContext context)
-    {
-        ToggleFlyMode();
     }
 }
