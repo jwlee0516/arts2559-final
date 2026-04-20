@@ -136,6 +136,15 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleFly"",
+                    ""type"": ""Button"",
+                    ""id"": ""da354cd4-7dea-4849-a414-0b42649f9f9a"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -226,6 +235,17 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
                     ""action"": ""FlyDown"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2dba1597-54ba-47c2-b3fb-d4fd6001427a"",
+                    ""path"": ""<Keyboard>/f"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleFly"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -239,6 +259,7 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
         m_Player_FlyUp = m_Player.FindAction("FlyUp", throwIfNotFound: true);
         m_Player_FlyDown = m_Player.FindAction("FlyDown", throwIfNotFound: true);
+        m_Player_ToggleFly = m_Player.FindAction("ToggleFly", throwIfNotFound: true);
     }
 
     ~@PlayerControl()
@@ -324,6 +345,7 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Jump;
     private readonly InputAction m_Player_FlyUp;
     private readonly InputAction m_Player_FlyDown;
+    private readonly InputAction m_Player_ToggleFly;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -355,6 +377,10 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/FlyDown".
         /// </summary>
         public InputAction @FlyDown => m_Wrapper.m_Player_FlyDown;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/ToggleFly".
+        /// </summary>
+        public InputAction @ToggleFly => m_Wrapper.m_Player_ToggleFly;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -396,6 +422,9 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
             @FlyDown.started += instance.OnFlyDown;
             @FlyDown.performed += instance.OnFlyDown;
             @FlyDown.canceled += instance.OnFlyDown;
+            @ToggleFly.started += instance.OnToggleFly;
+            @ToggleFly.performed += instance.OnToggleFly;
+            @ToggleFly.canceled += instance.OnToggleFly;
         }
 
         /// <summary>
@@ -422,6 +451,9 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
             @FlyDown.started -= instance.OnFlyDown;
             @FlyDown.performed -= instance.OnFlyDown;
             @FlyDown.canceled -= instance.OnFlyDown;
+            @ToggleFly.started -= instance.OnToggleFly;
+            @ToggleFly.performed -= instance.OnToggleFly;
+            @ToggleFly.canceled -= instance.OnToggleFly;
         }
 
         /// <summary>
@@ -497,5 +529,12 @@ public partial class @PlayerControl: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnFlyDown(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleFly" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleFly(InputAction.CallbackContext context);
     }
 }

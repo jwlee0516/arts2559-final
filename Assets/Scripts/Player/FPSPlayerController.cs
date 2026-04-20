@@ -55,6 +55,8 @@ public class FPSPlayerController : MonoBehaviour
 
         controls.Player.FlyDown.performed += OnFlyDownPerformed;
         controls.Player.FlyDown.canceled += OnFlyDownCanceled;
+        
+        controls.Player.ToggleFly.performed += OnToggleFly;
     }
 
     private void OnDisable()
@@ -72,6 +74,8 @@ public class FPSPlayerController : MonoBehaviour
 
         controls.Player.FlyDown.performed -= OnFlyDownPerformed;
         controls.Player.FlyDown.canceled -= OnFlyDownCanceled;
+        
+        
 
         controls.Disable();
     }
@@ -177,5 +181,10 @@ public class FPSPlayerController : MonoBehaviour
     private void OnFlyDownCanceled(InputAction.CallbackContext context)
     {
         flyDownHeld = false;
+    }
+    
+    private void OnToggleFly(InputAction.CallbackContext context)
+    {
+        ToggleFlyMode();
     }
 }
